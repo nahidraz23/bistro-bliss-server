@@ -1,7 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const app = express()
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 require('dotenv').config()
 const port = process.env.PORT || 5300
@@ -25,45 +25,87 @@ async function run () {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect()
 
-    const foodItemsColletection = client.db('bistroBlissDB').collection('foodItems')
+    const foodItemsColletection = client
+      .db('bistroBlissDB')
+      .collection('foodItems')
     const reviewsColletection = client.db('bistroBlissDB').collection('reviews')
     const cartColletection = client.db('bistroBlissDB').collection('cart')
     const userColletection = client.db('bistroBlissDB').collection('users')
 
+    // jwt middlewares
+    const verifyToken = (req, res, next) => {
+      console.log('inside verifyToken: ', req.headers.authorization)
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'forbidden access' })
+      }
+      const token = req.headers.authorization.split(' ')[1]
+
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decodded) => {
+        if (err) {
+          return res.status(401).send({ message: 'forbidden' })
+        }
+        req.decoded = decodded
+        next()
+      })
+    }
+
+    // JWT related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: '1h'
+      })
+      res.send({ token })
+    })
+
     // Users related api
-    app.get('/allUsers', async(req, res) => {
-      const result = await userColletection.find().toArray();
+    app.get('/allUsers', verifyToken, async (req, res) => {
+      const result = await userColletection.find().toArray()
       res.send(result)
     })
 
-    app.post('/users', async(req, res) => {
-      const user = req.body;
-      const query = {email : user?.email};
-      const existingUser = await userColletection.findOne(query);
-      if(existingUser){
-        return res.send({message: "User already exist", insetedId: null});
-      }
-      const result = await userColletection.insertOne(user);
-      res.send(result);
+    app.get('/allUsers/:email',verifyToken, async (req, res) => {
+        const email = req.params.email;
+        if(email !== req.decoded.email){
+          res.status(403).send({message: 'unauthorized access'})
+        }
+        const query = {email: email};
+        const user = await userColletection.findOne(query);
+        let admin = false;
+        if(user){
+          admin = user?.role === 'Admin';
+        }
+        res.send({admin});
     })
 
-    app.patch('/users/:id', async(req, res) => {
-      const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+    app.post('/users', async (req, res) => {
+      const user = req.body
+      const query = { email: user?.email }
+      const existingUser = await userColletection.findOne(query)
+      if (existingUser) {
+        return res.send({ message: 'User already exist', insetedId: null })
+      }
+      const result = await userColletection.insertOne(user)
+      res.send(result)
+    })
+
+    app.patch('/users/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
-          role: "Admin"
+          role: 'Admin'
         }
-      };
-      const result = await userColletection.updateOne(filter, updatedDoc);
-      res.send(result);
+      }
+      const result = await userColletection.updateOne(filter, updatedDoc)
+      res.send(result)
     })
 
-    app.delete('/users/:id', async(req, res) => {
-      const id = req.params.id;
-      const query = {_id : new ObjectId(id)};
-      const result = await userColletection.deleteOne(query);
-      res.send(result);
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await userColletection.deleteOne(query)
+      res.send(result)
     })
 
     app.get('/menu', async (req, res) => {
