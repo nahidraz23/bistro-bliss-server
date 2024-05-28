@@ -24,11 +24,17 @@ async function run () {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect()
 
-    const foodItemsColletection = client
-      .db('bistroBlissDB')
-      .collection('foodItems')
+    const foodItemsColletection = client.db('bistroBlissDB').collection('foodItems')
     const reviewsColletection = client.db('bistroBlissDB').collection('reviews')
     const cartColletection = client.db('bistroBlissDB').collection('cart')
+    const userColletection = client.db('bistroBlissDB').collection('users')
+
+    // Users related api
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      const result = await userColletection.insertOne(user);
+      res.send(result);
+    })
 
     app.get('/menu', async (req, res) => {
       const result = await foodItemsColletection.find().toArray()
@@ -41,10 +47,10 @@ async function run () {
     })
 
     app.get('/carts', async (req, res) => {
-      const email = req.query.email;
-      const query = {email: email}
-      const result = await cartColletection.find(query).toArray();
-      res.send(result);
+      const email = req.query.email
+      const query = { email: email }
+      const result = await cartColletection.find(query).toArray()
+      res.send(result)
     })
 
     app.post('/cart', async (req, res) => {
@@ -53,11 +59,11 @@ async function run () {
       res.send(result)
     })
 
-    app.delete('/mycart/:id', async(req, res) => {
-      const id = req.params.id;
-      const query = {_id : new ObjectId(id)};
-      const result = await cartColletection.deleteOne(query);
-      res.send(result);
+    app.delete('/mycart/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await cartColletection.deleteOne(query)
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
