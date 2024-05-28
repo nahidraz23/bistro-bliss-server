@@ -30,6 +30,11 @@ async function run () {
     const userColletection = client.db('bistroBlissDB').collection('users')
 
     // Users related api
+    app.get('/allUsers', async(req, res) => {
+      const result = await userColletection.find().toArray();
+      res.send(result)
+    })
+
     app.post('/users', async(req, res) => {
       const user = req.body;
       const query = {email : user?.email};
