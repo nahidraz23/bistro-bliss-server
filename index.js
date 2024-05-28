@@ -46,6 +46,25 @@ async function run () {
       res.send(result);
     })
 
+    app.patch('/users/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updatedDoc = {
+        $set: {
+          role: "Admin"
+        }
+      };
+      const result = await userColletection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
+
+    app.delete('/users/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)};
+      const result = await userColletection.deleteOne(query);
+      res.send(result);
+    })
+
     app.get('/menu', async (req, res) => {
       const result = await foodItemsColletection.find().toArray()
       res.send(result)
