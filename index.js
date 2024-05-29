@@ -34,24 +34,24 @@ async function run () {
 
     // jwt middlewares
     const verifyToken = (req, res, next) => {
-      console.log('inside verifyToken: ', req.headers.authorization)
+      // console.log('inside verifyToken: ', req.headers.authorization)
       if (!req.headers.authorization) {
         return res.status(401).send({ message: 'unauthorized access' })
       }
       const token = req.headers.authorization.split(' ')[1]
 
-      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decodded) => {
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: 'unauthorized access' })
         }
-        req.decoded = decodded
+        req.decoded = decoded;
         next()
       })
     }
 
     // user verify admin after verifyToken
     const verifyAdmin = async (req, res, next) => {
-      const email = req.decodded.email
+      const email = req.decoded.email;
       const query = { email: email }
       const user = await userColletection.findOne(query)
       const isAdmin = user?.role === 'Admin';
