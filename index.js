@@ -36,17 +36,29 @@ async function run () {
     const verifyToken = (req, res, next) => {
       console.log('inside verifyToken: ', req.headers.authorization)
       if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'forbidden access' })
+        return res.status(401).send({ message: 'unauthorized access' })
       }
       const token = req.headers.authorization.split(' ')[1]
 
       jwt.verify(token, process.env.ACCESS_TOKEN, (err, decodded) => {
         if (err) {
-          return res.status(401).send({ message: 'forbidden' })
+          return res.status(401).send({ message: 'unauthorized access' })
         }
         req.decoded = decodded
         next()
       })
+    }
+
+    // user verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decodded.email
+      const query = { email: email }
+      const user = await userColletection.findOne(query)
+      const isAdmin = user?.role === 'Admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next()
     }
 
     // JWT related api
@@ -59,23 +71,23 @@ async function run () {
     })
 
     // Users related api
-    app.get('/allUsers', verifyToken, async (req, res) => {
+    app.get('/allUsers', verifyToken, verifyAdmin, async (req, res) => {
       const result = await userColletection.find().toArray()
       res.send(result)
     })
 
-    app.get('/allUsers/:email',verifyToken, async (req, res) => {
-        const email = req.params.email;
-        if(email !== req.decoded.email){
-          res.status(403).send({message: 'unauthorized access'})
-        }
-        const query = {email: email};
-        const user = await userColletection.findOne(query);
-        let admin = false;
-        if(user){
-          admin = user?.role === 'Admin';
-        }
-        res.send({admin});
+    app.get('/allUsers/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+       return res.status(403).send({ message: 'forbidden access' })
+      }
+      const query = { email: email }
+      const user = await userColletection.findOne(query)
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'Admin'
+      }
+      res.send({ admin })
     })
 
     app.post('/users', async (req, res) => {
@@ -89,7 +101,7 @@ async function run () {
       res.send(result)
     })
 
-    app.patch('/users/:id', async (req, res) => {
+    app.patch('/users/:id',verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
@@ -101,7 +113,7 @@ async function run () {
       res.send(result)
     })
 
-    app.delete('/users/:id', async (req, res) => {
+    app.delete('/users/:id',verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await userColletection.deleteOne(query)
