@@ -67,7 +67,7 @@ async function run () {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: '1h'
       })
-      res.send({ token })
+      res.send({ token });
     })
 
     // Users related api
@@ -120,9 +120,16 @@ async function run () {
       res.send(result)
     })
 
+    // Menu related api
     app.get('/menu', async (req, res) => {
       const result = await foodItemsColletection.find().toArray()
       res.send(result)
+    })
+
+    app.post('/menu',verifyToken, verifyAdmin, async (req, res) => {
+      const foodItem = req.body;
+      const result = await foodItemsColletection.insertOne(foodItem);
+      res.send(result);
     })
 
     app.get('/reviews', async (req, res) => {
