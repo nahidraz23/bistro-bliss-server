@@ -31,7 +31,6 @@ async function run () {
     const reviewsColletection = client.db('bistroBlissDB').collection('reviews')
     const cartColletection = client.db('bistroBlissDB').collection('cart')
     const userColletection = client.db('bistroBlissDB').collection('users')
-
     // jwt middlewares
     const verifyToken = (req, res, next) => {
       // console.log('inside verifyToken: ', req.headers.authorization)
@@ -44,17 +43,17 @@ async function run () {
         if (err) {
           return res.status(401).send({ message: 'unauthorized access' })
         }
-        req.decoded = decoded;
+        req.decoded = decoded
         next()
       })
     }
 
     // user verify admin after verifyToken
     const verifyAdmin = async (req, res, next) => {
-      const email = req.decoded.email;
+      const email = req.decoded.email
       const query = { email: email }
       const user = await userColletection.findOne(query)
-      const isAdmin = user?.role === 'Admin';
+      const isAdmin = user?.role === 'Admin'
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' })
       }
@@ -67,7 +66,7 @@ async function run () {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: '1h'
       })
-      res.send({ token });
+      res.send({ token })
     })
 
     // Users related api
@@ -77,13 +76,13 @@ async function run () {
     })
 
     app.get('/allUsers/:email', verifyToken, async (req, res) => {
-      const email = req.params.email;
+      const email = req.params.email
       if (email !== req.decoded.email) {
-       return res.status(403).send({ message: 'forbidden access' })
+        return res.status(403).send({ message: 'forbidden access' })
       }
       const query = { email: email }
       const user = await userColletection.findOne(query)
-      let admin = false;
+      let admin = false
       if (user) {
         admin = user?.role === 'Admin'
       }
@@ -101,7 +100,7 @@ async function run () {
       res.send(result)
     })
 
-    app.patch('/users/:id',verifyToken, verifyAdmin, async (req, res) => {
+    app.patch('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
@@ -113,7 +112,7 @@ async function run () {
       res.send(result)
     })
 
-    app.delete('/users/:id',verifyToken, verifyAdmin, async (req, res) => {
+    app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await userColletection.deleteOne(query)
@@ -126,12 +125,20 @@ async function run () {
       res.send(result)
     })
 
-    app.post('/menu',verifyToken, verifyAdmin, async (req, res) => {
-      const foodItem = req.body;
-      const result = await foodItemsColletection.insertOne(foodItem);
-      res.send(result);
+    app.post('/menu', verifyToken, verifyAdmin, async (req, res) => {
+      const foodItem = req.body
+      const result = await foodItemsColletection.insertOne(foodItem)
+      res.send(result)
     })
 
+    app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await foodItemsColletection.deleteOne(query)
+      res.send(result)
+    })
+
+    // Review related api
     app.get('/reviews', async (req, res) => {
       const result = await reviewsColletection.find().toArray()
       res.send(result)
