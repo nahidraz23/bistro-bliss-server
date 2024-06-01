@@ -32,6 +32,7 @@ async function run () {
     const reviewsColletection = client.db('bistroBlissDB').collection('reviews')
     const cartColletection = client.db('bistroBlissDB').collection('cart')
     const userColletection = client.db('bistroBlissDB').collection('users')
+    const paymentColletection = client.db('bistroBlissDB').collection('payments')
     // jwt middlewares
     const verifyToken = (req, res, next) => {
       // console.log('inside verifyToken: ', req.headers.authorization)
@@ -190,7 +191,16 @@ async function run () {
       res.send(result);
     })
 
-    // Stripe payment intent
+    // Payment related api
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentColletection.insertOne(payment);
+      console.log(payment)
+
+      res.send(paymentResult);
+    })
+    
+    // Stripe intent
     app.post('/create-payment-intent', async(req, res) => {
       const {price} = req.body
       // const amount = parseInt(price * 100);
