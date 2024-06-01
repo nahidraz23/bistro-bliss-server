@@ -3,9 +3,9 @@ const cors = require('cors')
 const app = express()
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
-require('dotenv').config();
-const port = process.env.PORT || 5300;
-const stripe = require('stripe')(process.env.STIRPE_SECRET_KEY);
+require('dotenv').config()
+const port = process.env.PORT || 5300
+const stripe = require('stripe')(process.env.STIRPE_SECRET_KEY)
 
 // Middleware
 app.use(cors())
@@ -32,7 +32,9 @@ async function run () {
     const reviewsColletection = client.db('bistroBlissDB').collection('reviews')
     const cartColletection = client.db('bistroBlissDB').collection('cart')
     const userColletection = client.db('bistroBlissDB').collection('users')
-    const paymentColletection = client.db('bistroBlissDB').collection('payments')
+    const paymentColletection = client
+      .db('bistroBlissDB')
+      .collection('payments')
     // jwt middlewares
     const verifyToken = (req, res, next) => {
       // console.log('inside verifyToken: ', req.headers.authorization)
@@ -188,34 +190,49 @@ async function run () {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await cartColletection.deleteOne(query)
-      res.send(result);
+      res.send(result)
     })
 
     // Payment related api
-    app.post('/payments', async (req, res) => {
-      const payment = req.body;
-      const paymentResult = await paymentColletection.insertOne(payment);
-      console.log(payment)
-
-      res.send(paymentResult);
+    app.get('/payments/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      if (email !== req.decoded.email) {
+        return res.status(401).send({ message: 'unauthorized access' })
+      }
+      const result = await paymentColletection.find(query).toArray();
+      res.send(result)
     })
-    
+
+    app.post('/payments', async (req, res) => {
+      const payment = req.body
+      const paymentResult = await paymentColletection.insertOne(payment)
+
+      // carefully delete cart item after payment successfull
+      const query = {
+        _id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      }
+      const deleteResult = await cartColletection.deleteMany(query)
+
+      res.send({ paymentResult, deleteResult })
+    })
+
     // Stripe intent
-    app.post('/create-payment-intent', async(req, res) => {
-      const {price} = req.body
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body
       // const amount = parseInt(price * 100);
-      const amount = (price * 100);
+      const amount = price * 100
       // console.log(amount)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount : amount,
-        currency : 'usd',
-        "payment_method_types": [
-          "card"
-        ],
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
       })
       res.send({
-        clientSecret : paymentIntent.client_secret
-      });
+        clientSecret: paymentIntent.client_secret
+      })
     })
 
     // Send a ping to confirm a successful connection
