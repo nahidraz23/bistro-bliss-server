@@ -3,8 +3,9 @@ const cors = require('cors')
 const app = express()
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
-require('dotenv').config()
-const port = process.env.PORT || 5300
+require('dotenv').config();
+const port = process.env.PORT || 5300;
+const stripe = require('stripe')(process.env.STIRPE_SECRET_KEY);
 
 // Middleware
 app.use(cors())
@@ -151,8 +152,8 @@ async function run () {
           recipe: item.recipe
         }
       }
-      const result = await foodItemsColletection.updateOne(filter, updatedDoc);
-      res.send(result);
+      const result = await foodItemsColletection.updateOne(filter, updatedDoc)
+      res.send(result)
     })
 
     app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
@@ -168,6 +169,7 @@ async function run () {
       res.send(result)
     })
 
+    // Carts related api
     app.get('/carts', async (req, res) => {
       const email = req.query.email
       const query = { email: email }
@@ -175,7 +177,7 @@ async function run () {
       res.send(result)
     })
 
-    app.post('/cart', async (req, res) => {
+    app.post('/carts', async (req, res) => {
       const cartItem = req.body
       const result = await cartColletection.insertOne(cartItem)
       res.send(result)
@@ -185,7 +187,25 @@ async function run () {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await cartColletection.deleteOne(query)
-      res.send(result)
+      res.send(result);
+    })
+
+    // Stripe payment intent
+    app.post('/create-payment-intent', async(req, res) => {
+      const {price} = req.body
+      // const amount = parseInt(price * 100);
+      const amount = (price * 100);
+      // console.log(amount)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount : amount,
+        currency : 'usd',
+        "payment_method_types": [
+          "card"
+        ],
+      })
+      res.send({
+        clientSecret : paymentIntent.client_secret
+      });
     })
 
     // Send a ping to confirm a successful connection
