@@ -195,12 +195,12 @@ async function run () {
 
     // Payment related api
     app.get('/payments/:email', verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
+      const email = req.params.email
+      const query = { email: email }
       if (email !== req.decoded.email) {
         return res.status(401).send({ message: 'unauthorized access' })
       }
-      const result = await paymentColletection.find(query).toArray();
+      const result = await paymentColletection.find(query).toArray()
       res.send(result)
     })
 
@@ -232,6 +232,34 @@ async function run () {
       })
       res.send({
         clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // Stats/Analytics
+    app.get('/admin-stats',verifyToken, verifyAdmin, async (req, res) => {
+      const user = await userColletection.estimatedDocumentCount()
+      const payment = await paymentColletection.estimatedDocumentCount()
+      const menuItem = await foodItemsColletection.estimatedDocumentCount()
+      const result = await paymentColletection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: '$price'
+              }
+            }
+          }
+        ])
+        .toArray()
+
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+      res.send({
+        user,
+        payment,
+        menuItem,
+        revenue
       })
     })
 
