@@ -236,7 +236,7 @@ async function run () {
     })
 
     // Stats/Analytics
-    app.get('/admin-stats',verifyToken, verifyAdmin, async (req, res) => {
+    app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
       const user = await userColletection.estimatedDocumentCount()
       const payment = await paymentColletection.estimatedDocumentCount()
       const menuItem = await foodItemsColletection.estimatedDocumentCount()
@@ -253,7 +253,7 @@ async function run () {
         ])
         .toArray()
 
-      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0
 
       res.send({
         user,
@@ -261,6 +261,54 @@ async function run () {
         menuItem,
         revenue
       })
+    })
+
+    // order-stats
+    app.get('/order-stats',verifyToken, verifyAdmin, async (req, res) => {
+      const result = await paymentColletection
+        .aggregate([
+          {
+            $unwind: '$menuIds'
+          },
+          {
+            $addFields: {
+              menuItemObjectId: { $toObjectId: '$menuIds' }
+            }
+          },
+          {
+            $lookup: {
+              from: 'foodItems',
+              localField: 'menuItemObjectId',
+              foreignField: '_id',
+              as: 'matchedItems'
+            }
+          },
+          {
+            $unwind: '$matchedItems'
+          },
+          {
+            $group: {
+              _id: '$matchedItems.category',
+              quantity: {
+                $sum: 1
+              },
+              revenue: {
+                $sum: '$matchedItems.price'
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              category: '$_id',
+              quantity: '$quantity',
+              revenue: '$revenue'
+            }
+          }
+        ])
+        .toArray()
+
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
